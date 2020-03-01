@@ -1,0 +1,59 @@
+*Data:
+train data: 9104
+valid data: 2276
+test data: 2127
+class: 18([visible/x/y]，6類，["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"])
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 1]
+
+*Pre-processing:
+resize: 224*224
+
+*Model:
+input: 224*224*3
+ouput: (12), (6)			# 6類的(x, y)座標, 6類的visible
+Architecture: DenseNet121
+
+*training:
+optimizer: Adam
+loss: Deepfashion1 loss
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 2]
+
+* 資料預處理:
+-image: resize(224*224)
+-label: 1. heatmap(在黑mask上，以landmark上下左右各擴 5 pixel 變成一個11*11的白點)，再resize成224*224
+	2. visible由 0 and 1 構成的tensor
+* 模型架構:
+input: 224*224*3
+output: relu(224*224*6), sigmoid(6)	# 6類的heatmap(大小為224*224), 6類的visible
+Architecture: HRNetFashionNet()
+* 訓練參數:
+batch_size = 16
+optimizer: Adam(lr=0.0001)
+loss: MSELoss()
+* 結論：學壞，不知道是不是因為激發函數用relu的關係所以嘗試用用看sigmoid(v3)
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 3]
+
+*跟version2只改了output: sigmoid(224*224*6), sigmoid(6)
+*結論：predict heatmap 最大值不只一個，有很多個，所以學壞原因應該不是因為激發函數，猜測應該是因為自己拉的HRNet層數太少？所以試試看用少層一點的DenseNet試試看(v4)
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 4]
+
+*跟version3只改了Architecture: DenseNet121Heat()
+*結論：結果正常一點，但感覺還是有些點的結果很差，猜測是學習次數不夠多的原因
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 5]
+
+*跟version4只改了 
+1.lr=0.001
+2.batch_size=32
+*結論：使用較大的lr+reduceLearningRate，結果正常了，某些被遮擋的點結果較不好
+
+
