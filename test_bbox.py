@@ -10,12 +10,13 @@ import torch
 
 
 use_gpu = True
-checkpoints_path = 'checkpoints/epoch_100.pth'
+checkpoints_path = 'checkpoints/v5/epoch_100.pth'
 img_path = 'data/test/'
 test_txt = 'data/upper/test_list.txt'
+bbox_txt = 'data/Anno/list_bbox.txt'
 
 # load data list
-test_dataset = DFDatasets(test_txt)
+test_dataset = DFDatasets(test_txt, bbox_txt)
 test_loader = torch.utils.data.DataLoader(batch_size=1, dataset=test_dataset, num_workers=1)
 
 # load model
@@ -64,3 +65,4 @@ for i, inputs in enumerate(test_loader):
         #     cv2.circle(im, (int(x_gt[j]), int(y_gt[j])), 3, (0, 255, 0), -1)
         cv2.imshow('img', im)
         cv2.waitKey(0)
+        # cv2.imwrite()

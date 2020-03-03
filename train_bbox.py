@@ -32,11 +32,12 @@ validation_split = 0.2
 shuffle_dataset = True
 random_seed = 123
 
-train_txt = 'data/upper/train_list.txt'
+lm_txt = 'data/upper/train_list.txt'
+bbox_txt = 'data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list
-train_dataset = DFDatasets(train_txt)
+train_dataset = DFDatasets(lm_txt, bbox_txt)
 
 # Creating data indices for training and validation splits:
 dataset_size = len(train_dataset)
@@ -61,7 +62,7 @@ if use_gpu:
     model.cuda()
 
 # train
-# criterionHeat = nn.MSELoss()
+criterionHeat = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 # scheduler_2 = LambdaLR(optimizer, lr_lambda=[lambda epoch: 0.95 ** epoch])
 scheduler = ReduceLROnPlateau(optimizer, mode='min', verbose=True)
@@ -81,10 +82,10 @@ for epoch in range(200):
         [heat, vis] = inputs['labels']
         [heat, vis] = heat.cuda(), vis.cuda()
 
-        output_heat, output_vis = model(im)
+        output_heat = model(im)
 
-        loss = criterionHeat(output_heat, output_vis, heat, vis)
-        # loss = criterionHeat(output_heat, heat)
+        # loss = criterionHeat(output_heat, output_vis, heat, vis)
+        loss = criterionHeat(output_heat, heat)
         total_train_loss += loss
 
         optimizer.zero_grad()
@@ -102,8 +103,8 @@ for epoch in range(200):
 
             output_heat, output_vis = model(im)
 
-            # loss = criterionHeat(output_heat, heat)
-            loss = criterionHeat(output_heat, output_vis, heat, vis)
+            loss = criterionHeat(output_heat, heat)
+            # loss = criterionHeat(output_heat, output_vis, heat, vis)
             total_val_loss += loss
 
     avg_train_loss = total_train_loss/len(train_loader)
