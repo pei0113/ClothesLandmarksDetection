@@ -5,29 +5,31 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
 
 import numpy as np
+import cv2
 from time import time
+from scipy.ndimage import gaussian_filter
 
 from df_dataset_bbox import DFDatasets
-from networks import HRNetFashionNet, DenseNet121Heat
+from networks import DenseNet121Heat
 
 
-def criterionHeat(out_heat, out_vis, gt_heat, gt_vis):
-    x = out_heat - gt_heat              # (32, 6, 224, 224)
-    x = torch.mul(x, x)
-    x = torch.sum(torch.sum(x, 2), 2)   # (32, 6)
-    x = x * torch.abs(gt_vis - out_vis) / (224*224)
-    loss_heat = torch.sum(torch.sum(x, 0), 0) / (batch_size*6)   # (1)
+# def criterionHeat(out_heat, out_vis, gt_heat, gt_vis):
+#     x = out_heat - gt_heat              # (32, 6, 224, 224)
+#     x = torch.mul(x, x)
+#     x = torch.sum(torch.sum(x, 2), 2)   # (32, 6)
+#     x = x * torch.abs(gt_vis - out_vis) / (224*224)
+#     loss_heat = torch.sum(torch.sum(x, 0), 0) / (batch_size*6)   # (1)
+#
+#     return loss_heat
 
-    return loss_heat
 
-
+DEBUG_MODE = True
+num_worker = 0
 use_gpu = True
 lr = 0.001
 batch_size = 32
-
 validation_split = 0.2
 shuffle_dataset = True
 random_seed = 123
@@ -37,7 +39,7 @@ bbox_txt = 'data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list
-train_dataset = DFDatasets(lm_txt, bbox_txt)
+train_dataset = DFDatasets(lm_txt, bbox_txt, DEBUG_MODE)
 
 # Creating data indices for training and validation splits:
 dataset_size = len(train_dataset)
@@ -51,8 +53,8 @@ train_indices, val_indices = indices[split:], indices[:split]
 
 train_sampler = SubsetRandomSampler(train_indices)
 validation_sampler = SubsetRandomSampler(val_indices)
-train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=10, sampler=train_sampler)
-validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=10, sampler=validation_sampler)
+train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=num_worker, sampler=train_sampler)
+validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=num_worker, sampler=validation_sampler)
 
 # load FashionNet model
 model = DenseNet121Heat()
@@ -83,6 +85,10 @@ for epoch in range(200):
         [heat, vis] = heat.cuda(), vis.cuda()
 
         output_heat = model(im)
+        # # gaussian filter
+        # output_heat = output_heat.data.cpu().numpy()
+        # output_heat = gaussian_filter(output_heat, 1)
+        # output_heat = torch.from_numpy(output_heat).float().cuda()
 
         # loss = criterionHeat(output_heat, output_vis, heat, vis)
         loss = criterionHeat(output_heat, heat)
@@ -101,10 +107,15 @@ for epoch in range(200):
             [heat, vis] = inputs['labels']
             [heat, vis] = heat.cuda(), vis.cuda()
 
-            output_heat, output_vis = model(im)
+            output_heat = model(im)
+            # gaussian filter
+            # output_heat = output_heat.data.cpu().numpy()
+            # output_heat = gaussian_filter(output_heat, 1)
+            # output_heat = torch.from_numpy(output_heat).float().cuda()
 
-            loss = criterionHeat(output_heat, heat)
             # loss = criterionHeat(output_heat, output_vis, heat, vis)
+            loss = criterionHeat(output_heat, heat)
+            # loss = loss.requires_grad_()
             total_val_loss += loss
 
     avg_train_loss = total_train_loss/len(train_loader)

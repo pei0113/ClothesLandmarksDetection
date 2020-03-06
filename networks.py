@@ -106,32 +106,40 @@ class DenseNet121Heat(nn.Module):
 class GHCU(nn.Module):
     def __init__(self):
         super(GHCU, self).__init__()
-        self.conv1 = nn.Conv2d(6, 64, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(6, 64, kernel_size=3, stride=2)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(64, 32, kernel_size=3, stride=2)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=2)
         self.conv5 = nn.Conv2d(32, 16, kernel_size=3, stride=2)
         self.conv6 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
-        self.relu = nn.ReLu()
-        # self.fc1 = nn.Linear()
-        # self.fc2 = nn.Linear()
+        self.flatten = Flatten()
+        self.drop = nn.Dropout2d(0.2)
+        self.loc = nn.Linear(16*2*2, 12)
+        self.vis = nn.Linear(16*2*2, 6)
+        self.relu = nn.ReLU()
+        self.leakyRelu = nn.LeakyReLU()
+        self.sigmoid = nn.Sigmoid()
 
-    def froward(self, x):
+    def forward(self, x):
         x = self.conv1(x)
         x = self.relu(x)
         x = self.conv2(x)
         x = self.relu(x)
+        x = self.drop(x)
         x = self.conv3(x)
         x = self.relu(x)
         x = self.conv4(x)
         x = self.relu(x)
+        x = self.drop(x)
         x = self.conv5(x)
         x = self.relu(x)
         x = self.conv6(x)
         x = self.relu(x)
-
-        return x
-
+        x = self.drop(x)
+        x = self.flatten(x)
+        lm_loc = self.sigmoid(self.loc(x))
+        lm_vis = self.sigmoid(self.vis(x))
+        return lm_loc
 
 
 class HRNetFashionNet(nn.Module):

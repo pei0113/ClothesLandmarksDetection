@@ -10,7 +10,7 @@ from torch.autograd import Variable
 import numpy as np
 from time import time
 
-from df_dataset import DFDatasets
+from df_dataset_heat import DFDatasets
 from networks import Vgg16FashionNet, DenseNet121FashionNet
 
 

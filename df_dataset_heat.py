@@ -71,7 +71,7 @@ class DFDatasets(data.Dataset):
         result = {
             'im_name': im_name,
             'im_tensor': im_tensor,
-            'labels': labels
+            'labels': labels,
         }
 
         return result

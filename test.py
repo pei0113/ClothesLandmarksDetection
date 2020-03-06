@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 from PIL import Image
-from df_dataset import DFDatasets
+from df_dataset_heat import DFDatasets
 from networks import Vgg16FashionNet, DenseNet121FashionNet
 from torchvision.models import vgg19, densenet121
 
