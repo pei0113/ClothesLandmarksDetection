@@ -106,7 +106,7 @@ class DenseNet121Heat(nn.Module):
 class GHCU(nn.Module):
     def __init__(self):
         super(GHCU, self).__init__()
-        self.conv1 = nn.Conv2d(6, 64, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(9, 64, kernel_size=3, stride=2)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(64, 32, kernel_size=3, stride=2)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=2)
@@ -139,7 +139,7 @@ class GHCU(nn.Module):
         x = self.flatten(x)
         lm_loc = self.sigmoid(self.loc(x))
         lm_vis = self.sigmoid(self.vis(x))
-        return lm_loc
+        return lm_loc, lm_vis
 
 
 class HRNetFashionNet(nn.Module):

@@ -70,7 +70,7 @@ class DFDatasets(data.Dataset):
         y_gt = []       # for testing
         x_norm = []     # for training(x-coordinate in bbox and normalize)
         y_norm = []     # for training(y-coordinate in bbox and normalize)
-        lm_norm = []
+        # xy_norm = []    # for training(x1-norm, y1-norm, x2-norm, ...)
         count = 0
         for i in range(0, 18, 3):
             visible, Lx, Ly = landmarks[i:i+3]
@@ -78,10 +78,10 @@ class DFDatasets(data.Dataset):
             Ly = Ly - bbox_y1
             x_gt.append(Lx)
             y_gt.append(Ly)
-            # x_norm.append(Lx/(bbox_x2-bbox_x1))
-            # y_norm.append(Ly/(bbox_y2-bbox_y1))
-            lm_norm.append(Lx/(bbox_x2-bbox_x1))
-            lm_norm.append(Ly/(bbox_y2-bbox_y1))
+            x_norm.append(Lx/(bbox_x2-bbox_x1))
+            y_norm.append(Ly/(bbox_y2-bbox_y1))
+            # xy_norm.append(Lx/(bbox_x2-bbox_x1))
+            # xy_norm.append(Ly/(bbox_y2-bbox_y1))
 
             if visible == 2:        # cut-off
                 visible_new = 0
@@ -111,18 +111,19 @@ class DFDatasets(data.Dataset):
 
         x_gt = torch.FloatTensor(np.asarray(x_gt))  #
         y_gt = torch.FloatTensor(np.asarray(y_gt))  #
-        # x_norm = torch.FloatTensor(np.asarray(x_norm))  # [0~1]
-        # y_norm = torch.FloatTensor(np.asarray(y_norm))  # [0~1]
-        lm_norm = torch.FloatTensor(np.asarray(lm_norm))
+        x_norm = torch.FloatTensor(np.asarray(x_norm))  # [0~1]
+        y_norm = torch.FloatTensor(np.asarray(y_norm))  # [0~1]
+        # xy_norm = torch.FloatTensor(np.asarray(xy_norm))
 
-        # landmark_gt = [x_norm, y_norm]
-        landmark_gt = lm_norm
+        landmark_gt = [vis_gt, x_norm, y_norm]
+        # xy_gt = xy_norm
 
         result = {
             'im_name': im_name,
             'im_tensor': im_tensor,
             'labels': labels,               # for training
             'landmark_gt': landmark_gt,
+            # 'xy_gt': xy_gt,
             'bbox_tl': [bbox_x1, bbox_y1, bbox_x2, bbox_y2]       # for testing
         }
 
