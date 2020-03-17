@@ -72,18 +72,25 @@ loss: criterionHeat = MSELoss()
 [version 8]bbox
 
 *在version 6 之上，加入衣服的bbox縮小landmarks 預測的範圍，想法為，若是將此系統套用到虛擬試衣上，過程會對衣服做segmentation，等於可以得到衣服的bbox，因此不算多作工
-*修改：
+* 修改：
 * 資料預處理:
 - image: 對衣服ROI部份做crop再resize成224*224
 - label: landmark 為了對應衣服ROI因此新的landmark為ROI的相對座標，加入bbox為了給原圖crop
 * TESTING
 * 資料後處理: 對 pridict heatmap 做高斯濾波
-*
+* 結論：使用衣服ROI使預測結果變好，但還是有部份遮擋部份預測不佳的問題，且因為heatmap based method無法學習全局點&點之間關聯，所以參考paper「Semantic Alignment」加入GHCU(version 9)
 
 ---------------------------------------------------------------------------------------------------------------------------------
 [version 9] 加入GHCU
-1. 使用自己定義的criterion_GHCU(vis, x, y, out) -> 結果怪怪的
+1. 使用 v8 的 model predict heatmap (stage1)
+2. 將 heatmap 作為input 輸入GHCU預測6個landmarks的座標，去學點跟點之間的關聯(stage2)
+3. 使用MSELoss()計算六個點的(x, y)差異
+* 結論：因為考慮點跟點之間的關聯，因此結果更為穩定，但還是有少少數長袖（袖子部份）預測結果會偏移
 
+---------------------------------------------------------------------------------------------------------------------------------
+[version 10] GHCU改loss (加入visible 預測）
+* Loss Function： criterion_GHCU()
+* 結論：和v9 結果差不多，但似乎有些袖子的點預測比較準確，out_vis的值看起來都差不多，沒有什麼根據
 
 
 
