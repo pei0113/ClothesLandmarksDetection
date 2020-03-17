@@ -11,22 +11,22 @@ from time import time
 from networks import DenseNet121Heat, GHCU
 from df_dataset_GHCU import DFDatasets
 
-#
-# def criterion_GHCU(vis, x, y, output):
-#     out_x, out_y = torch.split(output[0], 6, 1)
-#     out_vis = output[1]
-#
-#     # vis_criterion = nn.MSELoss()
-#     # vis_loss = torch.abs(out_vis - vis)             # [32, 6]
-#
-#     loss_x = torch.abs(out_x - x)                   # [32, 6]
-#     loss_y = torch.abs(out_y - y)                   # [32, 6]
-#     loss_lm = loss_x + loss_y                       # [32, 6]
-#     loss_lm = torch.mul(loss_lm, loss_lm)           # [32, 6]
-#     loss_lm = vis * loss_lm                         # [32, 6]
-#     loss_lm = torch.sum(loss_lm)/(batch_size*6)     # [1]
-#
-#     return loss_lm
+
+def criterion_GHCU(vis, x, y, output):
+    out_x, out_y = torch.split(output[0], 6, 1)
+    out_vis = output[1]
+
+    # vis_criterion = nn.MSELoss()
+    # vis_loss = torch.abs(out_vis - vis)             # [32, 6]
+
+    loss_x = torch.abs(out_x - x)                   # [32, 6]
+    loss_y = torch.abs(out_y - y)                   # [32, 6]
+    loss_lm = loss_x + loss_y                       # [32, 6]
+    loss_lm = torch.mul(loss_lm, loss_lm)           # [32, 6]
+    loss_lm = vis * loss_lm                         # [32, 6]
+    loss_lm = torch.sum(loss_lm)/(batch_size*6)     # [1]
+
+    return loss_lm
 
 
 DEBUG_MODE = False
@@ -88,14 +88,19 @@ for epoch in range(200):
         im_tensor = inputs['im_tensor'].cuda()
         output_heat = model_HEAT(im_tensor)
 
-        # input2 = torch.cat((output_heat, im_tensor), 1)
-        output = model_GHCU(output_heat)
+        input2 = torch.cat((output_heat, im_tensor), 1)
+        output = model_GHCU(input2)
 
-        lm_gt = inputs['landmark_gt']
-        lm_gt = lm_gt.cuda()
+        # [ONLY CALCULATE LOSS OF X AND Y COORDINATE]
+        # xy_gt = inputs['xy_gt']
+        # xy_gt = xy_gt.cuda()
+        # loss = criterion(xy_gt, output)
 
-        loss = criterion(lm_gt, output)
-        # loss = criterion(vis_gt, x_gt, y_gt, output)
+        # [CALCULATE LOSS OF VIS & X & Y]
+        [vis_gt, x_gt, y_gt] = inputs['landmark_gt']
+        vis_gt, x_gt, y_gt = vis_gt.cuda(), x_gt.cuda(), y_gt.cuda()
+        loss = criterion_GHCU(vis_gt, x_gt, y_gt, output)
+        
         loss = loss.requires_grad_()
         total_train_loss += loss
 
@@ -108,19 +113,19 @@ for epoch in range(200):
             im_tensor = inputs['im_tensor'].cuda()
             output_heat = model_HEAT(im_tensor)
 
-            # input2 = torch.cat((output_heat, im_tensor), 1)
-            output = model_GHCU(output_heat)
+            input2 = torch.cat((output_heat, im_tensor), 1)
+            output = model_GHCU(input2)
 
-            lm_gt = inputs['landmark_gt']
-            lm_gt = lm_gt.cuda()
+            # xy_gt = inputs['xy_gt']
+            # xy_gt = xy_gt.cuda()
+            # loss = criterion(xy_gt, output)
 
-            loss = criterion(lm_gt, output)
+            [vis_gt, x_gt, y_gt] = inputs['landmark_gt']
+            vis_gt, x_gt, y_gt = vis_gt.cuda(), x_gt.cuda(), y_gt.cuda()
+            loss = criterion_GHCU(vis_gt, x_gt, y_gt, output)
+
             loss = loss.requires_grad_()
             total_val_loss += loss
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
     avg_train_loss = total_train_loss / len(train_loader)
     avg_val_loss = total_val_loss / len(validation_loader)
