@@ -50,7 +50,7 @@ class DenseNet121FashionNet(nn.Module):
         super(DenseNet121FashionNet, self).__init__()
         model = densenet121()
 
-        base_model = model.features[:-1]
+        base_model = model.features
         self.base_model = base_model
         self.fc_last = nn.Linear(in_features=1024 * 7 * 7, out_features=1024)
         self.loc = nn.Linear(in_features=1024, out_features=12)
@@ -69,6 +69,37 @@ class DenseNet121FashionNet(nn.Module):
         pose_vis = F.sigmoid(self.vis(pose))
 
         return pose_loc, pose_vis
+
+
+class LVNet(nn.Module):
+    def __init__(self):
+        super(LVNet, self).__init__()
+        model = densenet121()
+
+        base_model = model.features
+        self.base_model = base_model
+        self.fc1 = nn.Linear(in_features=1024 * 7 * 7, out_features=1024)
+        self.coord = nn.Linear(in_features=1024, out_features=12)
+        self.confNOCUT = nn.Linear(in_features=1024, out_features=6)
+        self.confVIS = nn.Linear(in_features=1024, out_features=6)
+        self.flatten = Flatten()
+        self.sigmoid = nn.Sigmoid()
+        self.relu = nn.ReLU()
+        self.leakyrelu = nn.LeakyReLU()
+
+        # num_features = model.classifier.in_features
+        # features = nn.Linear(num_features, output_classes)
+        # model.classifier = features
+
+    def forward(self, x):
+        based_feature = self.base_model(x)
+        x = self.flatten(based_feature)
+        x = self.fc1(x)
+        x = self.relu(x)
+        coord = self.leakyrelu(self.coord(x))
+        conf_nocut = self.sigmoid(self.confNOCUT(x))
+        conf_vis = self.sigmoid(self.confVIS(x))
+        return coord, conf_vis
 
 
 class DenseNet121Heat(nn.Module):
@@ -103,10 +134,38 @@ class DenseNet121Heat(nn.Module):
         return pose_heat
 
 
+class DenseNet121Visible(nn.Module):
+    def __init__(self):
+        super(DenseNet121Visible, self).__init__()
+        model = densenet121()
+        base_model = model.features[:-6]
+
+        self.base_model = base_model
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.drop = nn.Dropout2d(0.2)
+        self.fc1 = nn.Linear(128, 64)
+        self.fc2 = nn.Linear(64, 12)
+        self.sigmoid = nn.Sigmoid()
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        based_feature = self.base_model(x)          # [128*28*28]
+        x = self.avgpool(based_feature)             # [128*1*1]
+        x = self.relu(x)
+        x = self.drop(x)
+        x = x.view(x.shape[0], -1)                  # [128]
+        x = self.fc1(x)                             # [64]
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.fc2(x)                             # [12]
+        pose_vis = self.sigmoid(x)
+        return pose_vis
+
+
 class GHCU(nn.Module):
     def __init__(self):
         super(GHCU, self).__init__()
-        self.conv1 = nn.Conv2d(9, 64, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(6, 64, kernel_size=3, stride=2)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
         self.conv3 = nn.Conv2d(64, 32, kernel_size=3, stride=2)
         self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=2)
@@ -140,6 +199,77 @@ class GHCU(nn.Module):
         lm_loc = self.sigmoid(self.loc(x))
         lm_vis = self.sigmoid(self.vis(x))
         return lm_loc, lm_vis
+
+
+class GHCU_visible(nn.Module):
+    def __init__(self):
+        super(GHCU_visible, self).__init__()
+        self.conv1 = nn.Conv2d(6, 64, kernel_size=3, stride=2)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
+        self.conv3 = nn.Conv2d(64, 32, kernel_size=3, stride=2)
+        self.conv4 = nn.Conv2d(32, 32, kernel_size=3, stride=2)
+        self.conv5 = nn.Conv2d(32, 16, kernel_size=3, stride=2)
+        self.conv6 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
+        self.flatten = Flatten()
+        self.drop = nn.Dropout2d(0.2)
+        self.loc = nn.Linear(16*2*2, 12)
+        self.vis = nn.Linear(16*2*2, 6)
+        self.relu = nn.ReLU()
+        self.leakyRelu = nn.LeakyReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.conv4(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.conv5(x)
+        x = self.relu(x)
+        x = self.conv6(x)
+        x = self.relu(x)
+        x = self.drop(x)
+        x = self.flatten(x)
+        lm_vis = self.sigmoid(self.vis(x))
+        return lm_vis
+
+
+class HeatLVNet(nn.Module):
+    def __init__(self):
+        super(HeatLVNet, self).__init__()
+        model = densenet121(pretrained=True)
+        base_model = model.features[:-6]            # [128*28*28]
+
+        self.base_model = base_model
+        self.up1 = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=1, bias=1),
+            nn.BatchNorm2d(64),
+            nn.Upsample(size=(112, 112), mode='nearest'),
+            )
+        self.up2 = nn.Sequential(
+            nn.Conv2d(64, 6, kernel_size=1, bias=1),
+            nn.BatchNorm2d(6),
+            nn.Upsample(size=(224, 224), mode='nearest'))
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.vis = nn.Linear(128, 6)
+        self.sigmoid = nn.Sigmoid()
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        based_feature = self.base_model(x)      # (128, 28, 28)
+        y = self.avgpool(based_feature)         # (128, 1, 1)
+        y = y.view(y.shape[0], -1)              # (128)
+        y = self.vis(y)
+        lm_vis = self.sigmoid(y)
+        x = self.up1(based_feature)             # (64, 112, 112)
+        x = self.up2(x)                         # (6, 224, 224)
+        lm_heat = self.sigmoid(x)
+        return lm_heat, lm_vis
 
 
 class HRNetFashionNet(nn.Module):

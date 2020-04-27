@@ -127,7 +127,7 @@ for epoch in range(100):
     avg_val_loss = total_val_loss/len(validation_loader)
     scheduler.step(avg_val_loss)
 
-    print('==>>> **train** time: {:.3f}, epoch{}, train loss： {:.6f}, validation loss: {:.6f}'.format(time()-tStart, epoch+1, avg_train_loss, avg_val_loss))
+    print('==>>> **train** time: {:.3f}, epoch{}, train loss: {:.6f}, validation loss: {:.6f}'.format(time()-tStart, epoch+1, avg_train_loss, avg_val_loss))
 
     total_train_loss = 0
     total_val_loss = 0

@@ -1,41 +1,52 @@
 # -*- coding: UTF-8 -*-
+import os
+import sys
+import numpy as np
+from time import time
+from tensorboardX import SummaryWriter
+
 import torch
 import torch.optim as optim
-import torch.nn as nn
-from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
+from torch import nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
-import numpy as np
-import cv2
-from time import time
-from scipy.ndimage import gaussian_filter
+sys.path.append(os.path.abspath(".."))
 
 from df_dataset_bbox import DFDatasets
 from networks import DenseNet121Heat
+from utils import update_loss, show_epoch_loss, set_random_seed
 
 
-# def criterionHeat(out_heat, out_vis, gt_heat, gt_vis):
-#     x = out_heat - gt_heat              # (32, 6, 224, 224)
-#     x = torch.mul(x, x)
-#     x = torch.sum(torch.sum(x, 2), 2)   # (32, 6)
-#     x = x * torch.abs(gt_vis - out_vis) / (224*224)
-#     loss_heat = torch.sum(torch.sum(x, 0), 0) / (batch_size*6)   # (1)
-#
-#     return loss_heat
+def criterionHeat(out_heat, gt_heat, gt_vis):
+    criterion = nn.MSELoss()
+    loss_heat = criterion(out_heat, gt_heat)
+    # batch = out_heat.shape[0]
+    # x = out_heat - gt_heat              # (32, 6, 224, 224)
+    # x = torch.mul(x, x)
+    # x = torch.sum(torch.sum(x, 2), 2) / (224*224)   # (32, 6)
+    # # x = x * gt_vis
+    # loss_heat = torch.sum(torch.sum(x, 0), 0) / (batch*6)   # (1)
+    loss_dict = {'heat': loss_heat}
+
+    return loss_dict
 
 
 DEBUG_MODE = True
 num_worker = 0
 use_gpu = True
 lr = 0.001
-batch_size = 32
+batch_size = 64
 validation_split = 0.2
 shuffle_dataset = True
-random_seed = 123
+set_random_seed(2020)
 
-lm_txt = 'data/upper/train_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+# tensor board
+writer = SummaryWriter()
+
+lm_txt = '../data/upper/train_list.txt'
+bbox_txt = '../data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list
@@ -47,7 +58,6 @@ indices = list(range(dataset_size))
 split = int(np.floor(validation_split * dataset_size))
 
 if shuffle_dataset:
-    np.random.seed(random_seed)
     np.random.shuffle(indices)
 train_indices, val_indices = indices[split:], indices[:split]
 
@@ -58,19 +68,17 @@ validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num
 
 # load FashionNet model
 model = DenseNet121Heat()
-print(model)
 
 if use_gpu:
     model.cuda()
 
 # train
-criterionHeat = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
-# scheduler_2 = LambdaLR(optimizer, lr_lambda=[lambda epoch: 0.95 ** epoch])
 scheduler = ReduceLROnPlateau(optimizer, mode='min', verbose=True)
 
-total_train_loss = 0
-total_val_loss = 0
+train_loss_dict = {'heat': 0}
+valid_loss_dict = {'heat': 0}
+loss_arr = ['heat']
 for epoch in range(200):
 
     tStart = time()
@@ -79,24 +87,21 @@ for epoch in range(200):
     # train
     for batch_idx, inputs in enumerate(train_loader):
 
-        # inputs = train_loader.next_batch()
         im = inputs['im_tensor'].cuda()
         [heat, vis] = inputs['labels']
         [heat, vis] = heat.cuda(), vis.cuda()
 
         output_heat = model(im)
-        # # gaussian filter
-        # output_heat = output_heat.data.cpu().numpy()
-        # output_heat = gaussian_filter(output_heat, 1)
-        # output_heat = torch.from_numpy(output_heat).float().cuda()
 
-        # loss = criterionHeat(output_heat, output_vis, heat, vis)
-        loss = criterionHeat(output_heat, heat)
-        total_train_loss += loss
+        loss_dict = criterionHeat(output_heat, heat, vis)
+        train_loss_dict = update_loss(loss_dict, train_loss_dict, loss_arr)
+        loss_total = loss_dict['heat']
 
         optimizer.zero_grad()
-        loss.backward()
+        loss_total.backward()
         optimizer.step()
+
+    show_epoch_loss('train', train_loss_dict, len(train_loader), writer, epoch, tStart, loss_arr)
 
     # validation
     with torch.no_grad():
@@ -108,24 +113,16 @@ for epoch in range(200):
             [heat, vis] = heat.cuda(), vis.cuda()
 
             output_heat = model(im)
-            # gaussian filter
-            # output_heat = output_heat.data.cpu().numpy()
-            # output_heat = gaussian_filter(output_heat, 1)
-            # output_heat = torch.from_numpy(output_heat).float().cuda()
 
-            # loss = criterionHeat(output_heat, output_vis, heat, vis)
-            loss = criterionHeat(output_heat, heat)
-            # loss = loss.requires_grad_()
-            total_val_loss += loss
+            loss_dict = criterionHeat(output_heat, heat, vis)
+            valid_loss_dict = update_loss(loss_dict, valid_loss_dict, loss_arr)
 
-    avg_train_loss = total_train_loss/len(train_loader)
-    avg_val_loss = total_val_loss/len(validation_loader)
-    scheduler.step(avg_val_loss)
+    avg_total = show_epoch_loss('valid', valid_loss_dict, len(validation_loader), writer, epoch, tStart, loss_arr)
 
-    print('==>>> **train** time: {:.3f}, epoch{}, train loss： {:.6f}, validation loss: {:.6f}'.format(time()-tStart, epoch+1, avg_train_loss, avg_val_loss))
+    scheduler.step(avg_total)
 
-    total_train_loss = 0
-    total_val_loss = 0
+    train_loss_dict = {'heat': 0}
+    valid_loss_dict = {'heat': 0}
 
     if (epoch+1) % 10 == 0:
         torch.save(model.state_dict(), 'checkpoints/epoch_' + str(epoch+1) + '.pth')

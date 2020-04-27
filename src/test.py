@@ -12,7 +12,7 @@ import torch
 
 output_classes = 18
 use_gpu = True
-checkpoints_path = 'checkpoints/epoch_50.pth'
+checkpoints_path = 'checkpoints/v1/epoch_100.pth'
 img_path = 'data/test/'
 test_txt = 'data/upper/test_list.txt'
 
@@ -22,7 +22,7 @@ test_loader = torch.utils.data.DataLoader(batch_size=1, dataset=test_dataset, nu
 
 # load denseNet model
 # model = densenet121(pretrained=True)
-# num_features = model.classifier.in_features
+# num_features = moconf_nocut, conf_vis = out_conf_nocut[0][j], out_conf_vis[0][j]del.classifier.in_features
 # features = nn.Linear(num_features, output_classes)
 # model.classifier = features
 
@@ -58,16 +58,17 @@ for i, inputs in enumerate(test_loader):
     out_landmarks = output[0]
     out_vis = output[1]
     out_x, out_y = torch.split(out_landmarks, 6, 1)
-    out_x, out_y = out_x[0], out_y[0]
+    out_x, out_y, out_vis = out_x[0], out_y[0], out_vis[0]
 
     # output = F.sigmoid(output)
     # out_vis, out_x, out_y = torch.split(output, 6, 1)
     # out_vis, out_x, out_y = out_vis[0], out_x[0], out_y[0]
 
     for j in range(0, 6):
-        if out_vis[0][j] >= 0.5:
-            cv2.circle(im, (int(out_x[j]*w), int(out_y[j]*h)), 3, (0, 0, 255), -1)
-        if vis[j] == 1:
-            cv2.circle(im, (int(x[j]*w/224), int(y[j]*h/224)), 3, (0, 255, 0), -1)
+        x = out_x[j] * w
+        y = out_y[j] * h
+        vis = out_vis[j]
+        cv2.circle(im, (int(x), int(y)), 3, (0, 0, 255), -1)
+        cv2.putText(im, '{:.2f}'.format(float(vis)), (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 0), 2, 2)
         cv2.imshow('img', im)
         cv2.waitKey(0)

@@ -31,7 +31,7 @@ class DFDatasets(data.Dataset):
 
         with open(self.lm_txt, 'r') as f:
             if DEBUG_MODE:
-                lines = f.readlines()[:20]
+                lines = f.readlines()[:500]
             else:
                 lines = f.readlines()
             for indx, line in enumerate(lines):
@@ -65,9 +65,12 @@ class DFDatasets(data.Dataset):
         # label processing
         heats = np.zeros((6, 224, 224))
         landmarks = self.landmarks[index]
-        vis = []
+        vis_gt = []
         x_gt = []       # for testing
         y_gt = []       # for testing
+        x_norm = []     # for training(x-coordinate in bbox and normalize)
+        y_norm = []     # for training(y-coordinate in bbox and normalize)
+        # xy_norm = []    # for training(x1-norm, y1-norm, x2-norm, ...)
         count = 0
         for i in range(0, 18, 3):
             visible, Lx, Ly = landmarks[i:i+3]
@@ -75,6 +78,10 @@ class DFDatasets(data.Dataset):
             Ly = Ly - bbox_y1
             x_gt.append(Lx)
             y_gt.append(Ly)
+            x_norm.append(Lx/(bbox_x2-bbox_x1))
+            y_norm.append(Ly/(bbox_y2-bbox_y1))
+            # xy_norm.append(Lx/(bbox_x2-bbox_x1))
+            # xy_norm.append(Ly/(bbox_y2-bbox_y1))
 
             if visible == 2:        # cut-off
                 visible_new = 0
@@ -82,7 +89,7 @@ class DFDatasets(data.Dataset):
                 visible_new = 0.5
             elif visible == 0:      # visible
                 visible_new = 1
-            vis.append(visible_new)
+            vis_gt.append(visible_new)
 
             map = np.zeros((bbox_h, bbox_w))
             if visible == 2:
@@ -99,18 +106,26 @@ class DFDatasets(data.Dataset):
             count += 1
 
         heats = torch.FloatTensor(heats)
-        vis = torch.FloatTensor(np.asarray(vis))    # [0, 0.5, 1]
-        labels = [heats, vis]
+        vis_gt = np.asarray(vis_gt)
+        vis_gt_tensor = torch.FloatTensor(vis_gt)    # [0, 0.5, 1]
+        labels = [heats, vis_gt]
 
-        x_gt = torch.FloatTensor(np.asarray(x_gt))  # [0, 1]
-        y_gt = torch.FloatTensor(np.asarray(y_gt))  # [0, 1]
-        label_test = [vis, x_gt, y_gt]
+        x_gt = torch.FloatTensor(np.asarray(x_gt))  #
+        y_gt = torch.FloatTensor(np.asarray(y_gt))  #
+        x_norm = np.asarray(x_norm)
+        y_norm = np.asarray(y_norm)
+        x_norm_tensor = torch.FloatTensor(x_norm)  # [0~1]
+        y_norm_tensor = torch.FloatTensor(y_norm)  # [0~1]
+
+        landmark_gt_tensor = [vis_gt_tensor, x_norm_tensor, y_norm_tensor]
+        landmark_gt = [vis_gt, x_norm, y_norm]
 
         result = {
             'im_name': im_name,
             'im_tensor': im_tensor,
             'labels': labels,               # for training
-            'label_gt': label_test,         # for testing
+            'landmark_gt_tensor': landmark_gt_tensor,
+            'landmark_gt': landmark_gt,            # for evaluate
             'bbox_tl': [bbox_x1, bbox_y1, bbox_x2, bbox_y2]       # for testing
         }
 

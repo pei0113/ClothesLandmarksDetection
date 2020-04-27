@@ -88,8 +88,8 @@ for epoch in range(200):
         im_tensor = inputs['im_tensor'].cuda()
         output_heat = model_HEAT(im_tensor)
 
-        input2 = torch.cat((output_heat, im_tensor), 1)
-        output = model_GHCU(input2)
+        # input2 = torch.cat((output_heat, im_tensor), 1)
+        output = model_GHCU(output_heat)
 
         # [ONLY CALCULATE LOSS OF X AND Y COORDINATE]
         # xy_gt = inputs['xy_gt']
@@ -113,14 +113,14 @@ for epoch in range(200):
             im_tensor = inputs['im_tensor'].cuda()
             output_heat = model_HEAT(im_tensor)
 
-            input2 = torch.cat((output_heat, im_tensor), 1)
-            output = model_GHCU(input2)
+            # input2 = torch.cat((output_heat, im_tensor), 1)
+            output = model_GHCU(output_heat)
 
             # xy_gt = inputs['xy_gt']
             # xy_gt = xy_gt.cuda()
             # loss = criterion(xy_gt, output)
 
-            [vis_gt, x_gt, y_gt] = inputs['landmark_gt']
+            [vis_gt, x_gt, y_gt] = inputs['landmark_gt_tensor']
             vis_gt, x_gt, y_gt = vis_gt.cuda(), x_gt.cuda(), y_gt.cuda()
             loss = criterion_GHCU(vis_gt, x_gt, y_gt, output)
 
@@ -131,7 +131,7 @@ for epoch in range(200):
     avg_val_loss = total_val_loss / len(validation_loader)
     scheduler.step(avg_val_loss)
 
-    print('==>>> **train** time: {:.3f}, epoch{}, train loss： {:.6f}, validation loss: {:.6f}'.format(time() - tStart, epoch + 1, avg_train_loss, avg_val_loss))
+    print('==>>> **train** time: {:.3f}, epoch{}, train loss: {:.6f}, validation loss: {:.6f}'.format(time() - tStart, epoch + 1, avg_train_loss, avg_val_loss))
 
     total_train_loss = 0
     total_val_loss = 0
