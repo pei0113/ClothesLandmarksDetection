@@ -44,13 +44,13 @@ set_random_seed(2020)
 
 # tensor board
 writer = SummaryWriter()
-
-lm_txt = '../data/upper/train_list.txt'
-bbox_txt = '../data/Anno/list_bbox.txt'
+root = '..'
+lm_txt = root + '/data/upper/train_list.txt'
+bbox_txt = root + '/data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list
-train_dataset = DFDatasets(lm_txt, bbox_txt, DEBUG_MODE)
+train_dataset = DFDatasets(lm_txt, bbox_txt, DEBUG_MODE, root)
 
 # Creating data indices for training and validation splits:
 dataset_size = len(train_dataset)

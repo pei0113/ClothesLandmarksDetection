@@ -15,11 +15,12 @@ DEBUG_MODE = False
 VISUALIZE_MODE = True
 EVALUATE_MODE = False
 use_gpu = True
-ckpt_path_HEAT = 'checkpoints/v8/epoch_100.pth'
-ckpt_path_GHCU = 'checkpoints/v10/epoch_70.pth'
-img_path = 'data/test/'
-test_txt = 'data/upper/test_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+root = '../'
+ckpt_path_HEAT = root + 'checkpoints/v8/epoch_100.pth'
+ckpt_path_GHCU = root + 'checkpoints/v10/epoch_70.pth'
+img_path = root + 'data/test/'
+test_txt = root + 'data/upper/test_list.txt'
+bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load data list
 test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)

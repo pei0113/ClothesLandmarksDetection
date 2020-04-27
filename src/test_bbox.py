@@ -16,10 +16,11 @@ DEBUG_MODE = False
 VISUALIZE_MODE = True
 EVALUATE_MODE = True
 use_gpu = True
-checkpoints_path = 'checkpoints/epoch_100.pth'
-img_path = 'data/test/'
-test_txt = 'data/upper/test_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+root = '../'
+checkpoints_path = root + 'checkpoints/epoch_100.pth'
+img_path = root + 'data/test/'
+test_txt = root + 'data/upper/test_list.txt'
+bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load data list
 test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)

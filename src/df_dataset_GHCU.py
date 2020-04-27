@@ -10,12 +10,12 @@ from torchvision import transforms
 
 
 class DFDatasets(data.Dataset):
-    def __init__(self, lm_txt, bbox_txt, DEBUG_MODE):
+    def __init__(self, lm_txt, bbox_txt, DEBUG_MODE, root):
         super(DFDatasets, self).__init__()
 
         # base setting
         self.lm_txt = lm_txt
-        self.data_root = 'data'
+        self.data_root = root + 'data'
         self.transform_x = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.ToTensor(),

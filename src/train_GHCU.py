@@ -1,12 +1,16 @@
+import os
+import sys
+import numpy as np
+from time import time
+
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
-import numpy as np
-from time import time
+sys.path.append(os.path.abspath(".."))
 
 from networks import DenseNet121Heat, GHCU
 from df_dataset_GHCU import DFDatasets
@@ -38,9 +42,10 @@ validation_split = 0.2
 shuffle_dataset = True
 random_seed = 123
 
-checkpoint_path = 'checkpoints/v8/epoch_100.pth'
-test_txt = 'data/upper/train_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+root = '../'
+checkpoint_path = root + 'checkpoints/v8/epoch_100.pth'
+test_txt = root + 'data/upper/train_list.txt'
+bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load model stage 1(HeatMap generator)
 model_HEAT = DenseNet121Heat()
@@ -48,7 +53,7 @@ model_HEAT = DenseNet121Heat()
 model_GHCU = GHCU()
 
 # load data list
-train_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)
+train_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE, root)
 train_loader = torch.utils.data.DataLoader(batch_size=batch_size, dataset=train_dataset, num_workers=1)
 
 # Creating data indices for training and validation splits:

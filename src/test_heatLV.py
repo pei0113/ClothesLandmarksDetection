@@ -16,10 +16,11 @@ DEBUG_MODE = False
 VISUALIZE_MODE = False
 EVALUATE_MODE = True
 use_gpu = True
-ckpt_path = 'checkpoints/v20/epoch_100.pth'
-img_path = 'data/train/'
-test_txt = 'data/upper/test_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+root = '../'
+ckpt_path = root + 'checkpoints/v20/epoch_100.pth'
+img_path = root + 'data/train/'
+test_txt = root + 'data/upper/test_list.txt'
+bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load data list
 test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)

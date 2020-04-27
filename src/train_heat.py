@@ -1,17 +1,19 @@
 # -*- coding: UTF-8 -*-
-import torch
-import torch.optim as optim
-import torch.nn as nn
-from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
-from torch.utils.data.sampler import SubsetRandomSampler
-from torch.utils.data import DataLoader
-from torch.autograd import Variable
-
+import os
+import sys
 import numpy as np
 from time import time
 
+import torch
+import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import DataLoader
+
+sys.path.append(os.path.abspath(".."))
+
 from df_dataset_bbox import DFDatasets
-from networks import HRNetFashionNet, DenseNet121Heat
+from networks import DenseNet121Heat
 
 
 def criterionHeat(out_heat, out_vis, gt_heat, gt_vis):
@@ -32,7 +34,8 @@ validation_split = 0.2
 shuffle_dataset = True
 random_seed = 123
 
-train_txt = 'data/upper/train_list.txt'
+root = '../'
+train_txt = root + 'data/upper/train_list.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list

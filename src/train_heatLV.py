@@ -1,4 +1,10 @@
 # -*- coding: UTF-8 -*-
+import os
+import sys
+import numpy as np
+from time import time
+from tensorboardX import SummaryWriter
+
 import torch
 import torch.optim as optim
 from torch import nn
@@ -6,9 +12,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
 
-import numpy as np
-from time import time
-from tensorboardX import SummaryWriter
+sys.path.append(os.path.abspath(".."))
 
 from df_dataset_bbox import DFDatasets
 from networks import HeatLVNet
@@ -53,12 +57,13 @@ set_random_seed(2020)
 # tensor board
 writer = SummaryWriter()
 
-lm_txt = 'data/upper/train_list.txt'
-bbox_txt = 'data/Anno/list_bbox.txt'
+root = '../'
+lm_txt = root + 'data/upper/train_list.txt'
+bbox_txt = root + 'data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
 
 # load data list
-train_dataset = DFDatasets(lm_txt, bbox_txt, DEBUG_MODE)
+train_dataset = DFDatasets(lm_txt, bbox_txt, DEBUG_MODE, root)
 
 # Creating data indices for training and validation splits:
 dataset_size = len(train_dataset)

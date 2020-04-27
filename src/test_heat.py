@@ -11,9 +11,10 @@ import torch
 
 
 use_gpu = True
-checkpoints_path = 'checkpoints/v6/epoch_100.pth'
-img_path = 'data/test/'
-test_txt = 'data/upper/test_list.txt'
+root = '../'
+checkpoints_path = root + 'checkpoints/v6/epoch_100.pth'
+img_path = root + 'data/test/'
+test_txt = root + 'data/upper/test_list.txt'
 
 # load data list
 test_dataset = DFDatasets(test_txt)
