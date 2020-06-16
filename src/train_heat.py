@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 sys.path.append(os.path.abspath(".."))
 
 from df_dataset_bbox import DFDatasets
-from networks import DenseNet121Heat
+from networks import DenseNet121Heat, HeatLVNet
 
 
 def criterionHeat(out_heat, out_vis, gt_heat, gt_vis):
@@ -57,7 +57,7 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_work
 validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=10, sampler=validation_sampler)
 
 # load FashionNet model
-model = DenseNet121Heat()
+model = HeatLVNet()
 print(model)
 
 if use_gpu:

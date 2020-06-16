@@ -95,7 +95,7 @@ class DFDatasets(data.Dataset):
         x_gt = torch.FloatTensor(np.asarray(x_gt))
         y_gt = torch.FloatTensor(np.asarray(y_gt))
         # label_gt = [x_gt, y_gt, conf_nocut_gt, conf_vis_gt]
-        label_gt = [x_gt, y_gt, conf_vis_gt]
+        label_gt = [conf_vis_gt, x_gt, y_gt]
 
         result = {
             'im_name': im_name,

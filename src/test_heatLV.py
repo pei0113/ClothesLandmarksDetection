@@ -17,13 +17,13 @@ VISUALIZE_MODE = False
 EVALUATE_MODE = True
 use_gpu = True
 root = '../'
-ckpt_path = root + 'checkpoints/v20/epoch_100.pth'
+ckpt_path = root + 'checkpoints/epoch_100.pth'
 img_path = root + 'data/train/'
 test_txt = root + 'data/upper/test_list.txt'
 bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load data list
-test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)
+test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE, root)
 test_loader = torch.utils.data.DataLoader(batch_size=1, dataset=test_dataset, num_workers=1)
 
 # load model
@@ -40,7 +40,7 @@ acc_total = 0
 # predict
 for i, inputs in enumerate(test_loader):
     im = inputs['im_name'][0]
-    im = Image.open(os.path.join('data', im))
+    im = Image.open(os.path.join('../data', im))
     im = cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR)
     bbox_x1, bbox_y1, bbox_x2, bbox_y2 = inputs['bbox_tl']
     bbox_x1, bbox_y1, bbox_x2, bbox_y2 = int(bbox_x1), int(bbox_y1), int(bbox_x2), int(bbox_y2)
@@ -55,6 +55,7 @@ for i, inputs in enumerate(test_loader):
 
     out_xs = []
     out_ys = []
+    canvas = im.copy()
     for j in range(0, 6):
         out_vis = output_vis[j]
         out_heat = output_heat[j]
@@ -66,15 +67,14 @@ for i, inputs in enumerate(test_loader):
         out_xs.append(out_x / bbox_w)
         out_ys.append(out_y / bbox_h)
 
-        canvas = im.copy()
-        canvas_y, canvas_x = int(out_y * bbox_h / 224 + bbox_y1), int(out_x * bbox_w / 244 + bbox_x1)
+        canvas_y, canvas_x = int(out_y * bbox_h / 224 + bbox_y1), int(out_x * bbox_w / 224 + bbox_x1)
         cv2.circle(canvas, (canvas_x, canvas_y), 3, (0, 0, 255), -1)
         cv2.putText(canvas, str(j), (canvas_x, canvas_y), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 0), 2, 2)
         cv2.putText(canvas, str(float(out_vis)), (10, 10), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 0), 2, 2)
 
-        if VISUALIZE_MODE:
-            cv2.imshow('img', canvas)
-            cv2.waitKey(0)
+    if VISUALIZE_MODE:
+        cv2.imshow('img', canvas)
+        cv2.waitKey(0)
 
     if EVALUATE_MODE:
         out_xs = np.array(out_xs)

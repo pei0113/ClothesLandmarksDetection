@@ -75,17 +75,20 @@ class DFDatasets(data.Dataset):
         y_gt_norm = []      # for evaluate
         conf_nocut_gt = []  # for training
         conf_vis_gt = []    # for training
+        lm_loc_gt = []      # for training
         count = 0
         for i in range(0, 18, 3):
             visible, Lx, Ly = landmarks[i:i+3]
-            Lx = Lx - bbox_x1
-            Ly = Ly - bbox_y1
             x_gt.append(Lx)
             y_gt.append(Ly)
+            Lx = Lx - bbox_x1
+            Ly = Ly - bbox_y1
             Lx_norm = Lx / bbox_w
             Ly_norm = Ly / bbox_h
             x_gt_norm.append(Lx_norm)
             y_gt_norm.append(Ly_norm)
+            lm_loc_gt.append(Lx_norm)
+            lm_loc_gt.append(Ly_norm)
 
             # confidence label process
             if visible == 1:  # occlusion
@@ -102,17 +105,13 @@ class DFDatasets(data.Dataset):
 
             map = np.zeros((bbox_h, bbox_w))
             if visible != 2:
-                # Get heatmap(Method 1)
                 array_like = get_arraylike(bbox_w, bbox_h)
                 map = draw_heatmap(bbox_w, bbox_h, Lx, Ly, (bbox_w+bbox_h)//70, array_like)
-                # Get heatmap(Method 2)
-                # x0 = 0 if Lx - 5 < 0 else Lx - 5
-                # y0 = 0 if Ly - 5 < 0 else Ly - 5
-                # x1 = bbox_w if Lx + 6 > bbox_w else Lx + 6
-                # y1 = bbox_h if Ly + 6 > bbox_h else Ly + 6
-                # map[int(y0):int(y1), int(x0):int(x1)] = 1
+            if visible == 1:
+                map = 0 - map
             map = cv2.resize(map, (224, 224))
             # plt.imshow(map)
+            # plt.colorbar()
             # plt.show()
 
             heats[count, :, :] = map
@@ -129,12 +128,14 @@ class DFDatasets(data.Dataset):
 
         x_gt_norm = np.asarray(x_gt_norm)
         y_gt_norm = np.asarray(y_gt_norm)
+        lm_loc_gt = torch.FloatTensor(np.asarray(lm_loc_gt))
         landmark_gt = [conf_vis_gt, x_gt_norm, y_gt_norm]
 
         result = {
             'im_name': im_name,
             'im_tensor': im_tensor,
             'labels': labels,               # for training
+            'lm_loc_gt': lm_loc_gt,         # for training
             'label_gt': label_test,         # for testing
             'landmark_gt': landmark_gt,     # for evaluate
             'bbox_tl': [bbox_x1, bbox_y1, bbox_x2, bbox_y2]       # for testing

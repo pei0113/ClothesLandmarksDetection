@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 sys.path.append(os.path.abspath(".."))
 
 from df_dataset_bbox import DFDatasets
-from networks import DenseNet121Heat
+from networks import DenseNet121Heat, HRNetFashionNet
 from utils import update_loss, show_epoch_loss, set_random_seed
 
 
@@ -37,14 +37,14 @@ DEBUG_MODE = True
 num_worker = 0
 use_gpu = True
 lr = 0.001
-batch_size = 64
+batch_size = 20
 validation_split = 0.2
 shuffle_dataset = True
 set_random_seed(2020)
 
 # tensor board
 writer = SummaryWriter()
-root = '..'
+root = '../'
 lm_txt = root + '/data/upper/train_list.txt'
 bbox_txt = root + '/data/Anno/list_bbox.txt'
 class_names = ["left collar", "right collar", "left sleeve", "right sleeve", "left hem", "right hem"]
@@ -67,7 +67,7 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_work
 validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=num_worker, sampler=validation_sampler)
 
 # load FashionNet model
-model = DenseNet121Heat()
+model = HRNetFashionNet()
 
 if use_gpu:
     model.cuda()
@@ -125,5 +125,5 @@ for epoch in range(200):
     valid_loss_dict = {'heat': 0}
 
     if (epoch+1) % 10 == 0:
-        torch.save(model.state_dict(), 'checkpoints/epoch_' + str(epoch+1) + '.pth')
+        torch.save(model.state_dict(), root + 'checkpoints/epoch_' + str(epoch+1) + '.pth')
 

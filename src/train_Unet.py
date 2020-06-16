@@ -11,12 +11,15 @@ from torch import nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
+from torchvision.utils import make_grid, save_image
 
 sys.path.append(os.path.abspath(".."))
 
 from df_dataset_bbox import DFDatasets
-from networks import HeatLVNet
+from networks import LVUNet4
+from cu_net import create_cu_net
 from utils import update_loss, show_epoch_loss, set_random_seed
+from loss import FOCAL
 
 
 def convert_gt(gt_tensor):
@@ -26,9 +29,9 @@ def convert_gt(gt_tensor):
     return gt_tensor
 
 
-def criterion(out_heat, gt_heat, out_vis, gt_vis):
-    criterion_vis = nn.BCELoss()
-    loss_vis = criterion_vis(out_vis, gt_vis)
+def criterion(out_heat, gt_heat):
+    # criterion_vis = nn.BCELoss()
+    # loss_vis = criterion_vis(out_vis, gt_vis)
 
     criterion_heat = nn.MSELoss()
     loss_heat = criterion_heat(out_heat, gt_heat)
@@ -38,18 +41,16 @@ def criterion(out_heat, gt_heat, out_vis, gt_vis):
     # x = torch.mul(x, x)
     # x = torch.sum(torch.sum(x, 2), 2) / (224*224)   # (32, 6)
     # loss_heat = torch.sum(torch.sum(x, 0), 0) / (batch*6)   # (1)
-    loss_dict = {'heat': loss_heat,
-                 'vis': loss_vis,
-                 'total': loss_heat + loss_vis}
+    loss_dict = {'heat': loss_heat}
 
     return loss_dict
 
 
 DEBUG_MODE = False
-num_worker = 10
+num_worker = 0
 use_gpu = True
 lr = 0.001
-batch_size = 64
+batch_size = 16
 validation_split = 0.2
 shuffle_dataset = True
 set_random_seed(2020)
@@ -80,7 +81,8 @@ train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_work
 validation_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, num_workers=num_worker, sampler=validation_sampler)
 
 # load FashionNet model
-model = HeatLVNet()
+# model = LVUNet5()
+model = create_cu_net(neck_size=4, growth_rate=32, init_chan_num=128, class_num=6, layer_num=2, order=1, loss_num=1)
 
 if use_gpu:
     model.cuda()
@@ -89,9 +91,9 @@ if use_gpu:
 optimizer = optim.Adam(model.parameters(), lr=lr)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', verbose=True)
 
-train_loss_dict = {'heat': 0, 'vis': 0, 'total': 0}
-valid_loss_dict = {'heat': 0, 'vis': 0, 'total': 0}
-loss_arr = ['heat', 'vis', 'total']
+train_loss_dict = {'heat': 0}
+valid_loss_dict = {'heat': 0}
+loss_arr = ['heat']
 for epoch in range(1000):
 
     tStart = time()
@@ -99,21 +101,27 @@ for epoch in range(1000):
 
     # train
     for batch_idx, inputs in enumerate(train_loader):
-
         im = inputs['im_tensor'].cuda()
         [heat, vis] = inputs['labels']
         [heat, vis] = heat.cuda(), vis.cuda()
 
-        output_heat, output_vis = model(im)
+        output_heat = model(im)[0]
 
-        loss_dict = criterion(output_heat, heat, output_vis, vis)
+        loss_dict = criterion(output_heat, heat)
         train_loss_dict = update_loss(loss_dict, train_loss_dict, loss_arr)
-        loss_total = loss_dict['total']
+        loss_total = loss_dict['heat']
 
         optimizer.zero_grad()
         loss_total.backward()
         optimizer.step()
 
+    # visualize on tensorboard
+    # img_grid = make_grid(im)
+    # writer.add_image('train/raw img', img_grid, epoch)
+    # for b in range(x5.shape[0]):
+    #     x5_grid = make_grid(x5[b].view(-1, 1, x5.shape[2], x5.shape[3]))
+    #     save_image(x5_grid, '../feature/train/epoch{}_{}.jpg'.format(epoch+1, b+1))
+    # writer.add_image('train/x5 feature', x5_grid, epoch)
     show_epoch_loss('train', train_loss_dict, len(train_loader), writer, epoch, tStart, loss_arr)
 
     # validation
@@ -125,17 +133,24 @@ for epoch in range(1000):
             [heat, vis] = inputs['labels']
             [heat, vis] = heat.cuda(), vis.cuda()
 
-            output_heat, output_vis = model(im)
+            output_heat = model(im)[0]
 
-            loss_dict = criterion(output_heat, heat, output_vis, vis)
+            loss_dict = criterion(output_heat, heat)
             valid_loss_dict = update_loss(loss_dict, valid_loss_dict, loss_arr)
 
+    # visualize on tensorboard
+    # img_grid = make_grid(im)
+    # writer.add_image('valid/raw img', img_grid, epoch)
+    # for b in range(x5.shape[0]):
+    #     x5_grid = make_grid(x5[b].view(-1, 1, x5.shape[2], x5.shape[3]))
+    #     save_image(x5_grid, '../feature/valid/epoch{}_{}.jpg'.format(epoch+1, b+1))
+    # writer.add_image('valid/x5 feature', x5_grid, epoch)
     avg_total = show_epoch_loss('valid', valid_loss_dict, len(validation_loader), writer, epoch, tStart, loss_arr)
 
     scheduler.step(avg_total)
 
-    train_loss_dict = {'heat': 0, 'vis': 0, 'total': 0}
-    valid_loss_dict = {'heat': 0, 'vis': 0, 'total': 0}
+    train_loss_dict = {'heat': 0}
+    valid_loss_dict = {'heat': 0}
 
     if (epoch+1) % 10 == 0:
         torch.save(model.state_dict(), '../checkpoints/epoch_' + str(epoch+1) + '.pth')

@@ -93,8 +93,8 @@ loss: criterionHeat = MSELoss()
 
 ---------------------------------------------------------------------------------------------------------------------------------
 [version 8]bbox (**epoch100**)
-
-*在version 6 之上，加入衣服的bbox縮小landmarks 預測的範圍，想法為，若是將此系統套用到虛擬試衣上，過程會對衣服做segmentation，等於可以得到衣服的bbox，因此不算多作工
+* test_heat
+* 在version 6 之上，加入衣服的bbox縮小landmarks 預測的範圍，想法為，若是將此系統套用到虛擬試衣上，過程會對衣服做segmentation，等於可以得到衣服的bbox，因此不算多作工
 * 修改：
 * 資料預處理:
 - image: 對衣服ROI部份做crop再resize成224*224
@@ -207,9 +207,121 @@ loss: criterionHeat = MSELoss()
 [version 20] 
 * train_heatLV
 * Network: HeatLVNet()
-* LOSS: BCE(vis) + w_vis*MSE(heat)
+* Loss: BCE(vis) + w_vis*MSE(heat)
 * vis => vis=1, occ=0
 * w_vis => vis=1, occ=0.5
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 21] 
+* train_heatLV
+* Network: HeatLVNet()
+* Loss: BCE(vis) + MSE(heat)
+* vis => vis=1, occ=0
+* heat: gaussian => (bbox_w+bbox_h)//70
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 22] 
+* train_Unet
+* Network: LVUNet
+* Loss: BCE(vis) + MSE(heat)
+* vis => vis=1, occ=0
+* heat: gaussian => (bbox_w+bbox_h)//70
+* 結論: landmark NMSE 結果比 HeatLVNet() 好，但visibility還是差
+
+[version 22-2]
+加dropout
+
+[version 22-3]
+BCE(vis)*10 + MSE(heat)
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 23] 
+* train_Unet
+* Network: LVUNet2 				#concat input downsample to feature(28*28) as information of visibility
+* Loss: BCE(vis) + MSE(heat)
+* vis => vis=1, occ=0
+* heat: gaussian => (bbox_w+bbox_h)//70
+* 沒有很好
+
+---------------------------------------------------------------------------------------------------------------------------------
+[try] 
+* train_Unet
+* Network: LVUNet3				# Use 2 UNet Architecture
+* 結論: BAD
+
+---------------------------------------------------------------------------------------------------------------------------------
+[v24]
+* train_Unet
+* Network: LVUNet4				# predict visibility use fc layer and change channel to 128
+* Loss: FOCAL(vis) + MSE(heat)
+* 結論: 0.3269 / 0.5145
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 25] 
+* train_Unet
+* Network: LVUNet5				# 改output activation function: tanh()
+* Loss: MSE(heat)
+* heat: vis=>1 ,  occ=>-1
+* 結論：用heatmap-based的方式預測visibility效果很好！
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 26] 
+* train_Unet
+* Network: CUNet()
+* input: (256, 256, 3)
+* output: Heatmap(64, 64, 3)
+* Loss: MSELoss(heat)
+* heat_gt: vis=>gaussian(1), vis=>gaussian(-1)
+* 結論：NMSE better, vis_acc worse
+
+---------------------------------------------------------------------------------------------------------------------------------
+[version 27] 
+* train_UNETandGHCU
+* Network: LVUNet_GHCU()
+* Loss: MSELoss(heat) + MSELoss(loc) + BCELoss(vis)
+
+[version 27-1] 先tanh再GHCU
+* train_UNETandGHCU
+* Network: LVUNet_GHCU2()
+* Loss: MSELoss(heat) + MSELoss(loc) + BCELoss(vis)
+
+[version 27-2] no regression vis
+* train_UNETandGHCU
+* Network: LVUNet_GHCU3()
+* Loss: MSELoss(heat) + MSELoss(loc)
+
+[version 27-3] two stage
+* train_UNETandGHCU
+* Network: LVUNet5() + GHCU()
+* Loss: MSELoss(loc) + BCELoss(vis)
+* 結果：REGRESSION location and HEATMAP visibility is better
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

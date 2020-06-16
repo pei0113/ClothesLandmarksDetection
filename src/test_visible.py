@@ -12,17 +12,17 @@ from scipy.ndimage import gaussian_filter
 import torch
 
 DEBUG_MODE = False
-VISUALIZE_MODE = True
-EVALUATE_MODE = False
+VISUALIZE_MODE = False
+EVALUATE_MODE = True
 use_gpu = True
 root = '../'
-ckpt_path = root + 'checkpoints/epoch_80.pth'
+ckpt_path = root + 'checkpoints/v17_2/epoch_80.pth'
 img_path = root + 'data/train/'
 test_txt = root + 'data/upper/test_list.txt'
 bbox_txt = root + 'data/Anno/list_bbox.txt'
 
 # load data list
-test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE)
+test_dataset = DFDatasets(test_txt, bbox_txt, DEBUG_MODE, root)
 test_loader = torch.utils.data.DataLoader(batch_size=1, dataset=test_dataset, num_workers=1)
 
 # load model
@@ -33,13 +33,14 @@ if use_gpu:
 
 # load weight
 model.load_state_dict(torch.load(ckpt_path))
+model.eval()
 
 error_total = 0
 acc_total = 0
 # predict
 for i, inputs in enumerate(test_loader):
     im = inputs['im_name'][0]
-    im = Image.open(os.path.join('data', im))
+    im = Image.open(os.path.join('../data', im))
     im = cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR)
     bbox_x1, bbox_y1, bbox_x2, bbox_y2 = inputs['bbox_tl']
     bbox_x1, bbox_y1, bbox_x2, bbox_y2 = int(bbox_x1), int(bbox_y1), int(bbox_x2), int(bbox_y2)
@@ -58,9 +59,9 @@ for i, inputs in enumerate(test_loader):
         landmark_gt = inputs['label_gt']        # [x, y, vis]
         landmark_gt = [n.cpu().numpy() for n in landmark_gt]
         out_numpy = [n[0].cpu().detach().numpy() for n in [out_conf_vis, out_x, out_y]]
-        error = calculate_NMSE(gts=landmark_gt[:2], pds=out_numpy[1:])
+        error = calculate_NMSE(gts=landmark_gt, pds=out_numpy)
         error_total += error
-        acc_vis = evaluate_visible(landmark_gt[2], out_numpy[0])
+        acc_vis = evaluate_visible(landmark_gt[0], out_numpy[0])
         acc_total += acc_vis
         print(' [*] Evaluate: {} / {}'.format(i, len(test_loader)))
 
